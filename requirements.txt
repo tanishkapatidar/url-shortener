@@ -8,7 +8,7 @@ pydantic==2.7.1
 pydantic_core==2.18.2
 pypiwin32==223
 pyshorteners==1.0.1
-pywin32==306
+pywin32==3.13
 requests==2.32.2
 ruff==0.4.5
 setuptools==70.0.0

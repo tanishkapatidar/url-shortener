@@ -1,51 +1,110 @@
+from fastapi.responses import JSONResponse, RedirectResponse
+from pydantic import BaseModel, HttpUrl, PrivateAttr
+
+from fastapi import FastAPI, Form
+import uvicorn
 import os
-import sys
+from dotenv import load_dotenv
+import random
+import string
+import psycopg2
+load_dotenv()
+BASEURL = os.getenv("baseUrl")
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+def connection():
+    conn = psycopg2.connect(
+        database = "bodhi", user = "postgres", password = "password", host = "localhost", port ="5432"
+    )
+    print("Connection Created Successfully")
+    return conn
 
-from app.models.url_shortener import UrlShortenerValidation
-from app.services.url_shortener import URLShortener
+
+conn= connection()
+cursor = conn.cursor()
+
+# Define the SQL query for creating a new table
+create_table_query = '''
+CREATE TABLE IF NOT EXISTS url_shortener.shortenedUrl (
+    id VARCHAR(255),
+    longUrl VARCHAR(255));'''
+try:
+    # Execute the SQL query
+    cursor.execute(create_table_query)
+    
+    # Commit the transaction
+    conn.commit()
+    print("Table created successfully")
+except Exception as error:
+    print(f"Error occurred: {error}")
+    conn.rollback()
+finally:
+    # Close the cursor and connection
+    cursor.close()
+    conn.close()
 
 
-def run_url_shortener():
-    entered_url = input("Enter the URL you want to shorten: ")
+def generate_id():
+    # Define the character pool (digits, lowercase letters, uppercase letters)
+    characters = string.digits + string.ascii_lowercase + string.ascii_uppercase
+    
+    id = ''.join(random.choices(characters,k=4))
+    return id
 
-    # Validate the entered URL
-    url_validation = UrlShortenerValidation(url=entered_url)
+def save(id, longUrl):
 
-    # Extract the validated URL and convert it to string
-    validated_url = str(url_validation.url)
+    conn= connection()
+    cursor= conn.cursor()
 
-    # Pass the string URL to URLShortener
-    url_shortener = URLShortener(url=validated_url)
+    cursor.execute(""" INSERT INTO url_shortener.shortenedUrl(id,longUrl)
+    VALUES(%s,%s);""",(id,longUrl))
+    conn.commit()
+    cursor.close()
+    conn.close()
 
-    result = url_shortener.shorten_url()
-    if isinstance(result, str):
-        print(f"Shortened URL: {result}")
+def getLongUrl(id):
+
+    conn= connection()
+    cursor= conn.cursor()
+
+    cursor.execute("""SELECT shortenedUrl.longUrl FROM url_shortener.shortenedUrl WHERE id = %s """,(id,))
+
+    response = cursor.fetchone()
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return response
+
+
+def Shortener(longUrl):
+    id = generate_id()
+    save(id,longUrl)
+    url = BASEURL + id
+    return url
+
+class Validation(BaseModel):
+    url: HttpUrl
+
+app = FastAPI()
+
+@app.get("/{shortUrl}")
+def fetchUrl(shortUrl:str):
+    longUrl = getLongUrl(shortUrl)
+    return RedirectResponse(url=longUrl[0])
+
+
+@app.post("/")
+def url_shortner(longUrl:str = Form("")):
+    valid_url = Validation(url = longUrl)
+    valid_url = str(valid_url.url)
+    res = Shortener(longUrl)
+    
+    if isinstance(res,str):
+        msg= "Your URL shortened successfully"
+        print("req_url:",{res})
     else:
-        print(f"Error occurred: {result}")
-    return result
-
+        print("Error:",{res})
+    return {"text":res}
 
 if __name__ == "__main__":
-    run_url_shortener()
-    # run_url_shortener_with_other_library()
-
-# def run_url_shortener_with_other_library():
-#     entered_url = input("Enter the URL you want to shorten: ")
-
-#     # Validate the entered URL
-#     url_validation = UrlShortenerValidation(url=entered_url)
-
-#     # Extract the validated URL and convert it to string
-#     validated_url = str(url_validation.url)
-
-#     # Pass the string URL to URLShortener
-#     url_shortener = URLShortener(url=validated_url, shortener=None) # enter the shortener you want to use
-
-#     result = url_shortener.shorten_url()
-#     if isinstance(result, str):
-#         print(f"Shortened URL: {result}")
-#     else:
-#         print(f"Error occurred: {result}")
-#     return result
+    uvicorn.run("new_main:app", host="127.0.0.1", port=8000, reload=True)
