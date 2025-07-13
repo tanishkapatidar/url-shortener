@@ -1,5 +1,6 @@
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel, HttpUrl, PrivateAttr
+from fastapi.middleware.cors import CORSMiddleware
 
 from fastapi import FastAPI, Form
 import uvicorn
@@ -9,11 +10,26 @@ import random
 import string
 import psycopg2
 load_dotenv()
-BASEURL = os.getenv("baseUrl")
+
+BASEURL = os.getenv("BASE_URL")
+DATABASE = os.getenv("DATABASE")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+
+
+
+
+
+
+
+if BASEURL is None:
+    raise ValueError("BASEURL is not set in the .env file")
 
 def connection():
     conn = psycopg2.connect(
-        database = "bodhi", user = "postgres", password = "password", host = "localhost", port ="5432"
+        database = DATABASE, user = DB_USER, password = DB_PASSWORD, host = DB_HOST, port = DB_PORT, 
     )
     print("Connection Created Successfully")
     return conn
@@ -62,14 +78,21 @@ def save(id, longUrl):
     conn.close()
 
 def getLongUrl(id):
-
     conn= connection()
     cursor= conn.cursor()
-
     cursor.execute("""SELECT shortenedUrl.longUrl FROM url_shortener.shortenedUrl WHERE id = %s """,(id,))
-
     response = cursor.fetchone()
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return response
 
+def checkIfExist(longUrl):
+    conn= connection()
+    cursor= conn.cursor()
+    cursor.execute("""SELECT shortenedUrl.id FROM url_shortener.shortenedUrl WHERE longUrl = %s """,(longUrl,))
+    response = cursor.fetchone()
+    print(response)
     conn.commit()
     cursor.close()
     conn.close()
@@ -77,8 +100,17 @@ def getLongUrl(id):
 
 
 def Shortener(longUrl):
-    id = generate_id()
+    isUrlExist = checkIfExist(longUrl)
+    if not isUrlExist:
+        id = generate_id() 
+    else :
+        return  BASEURL + isUrlExist[0]
+        
+
+    if not id:
+        raise ValueError("Generated ID is empty or None")
     save(id,longUrl)
+    print('url saved')
     url = BASEURL + id
     return url
 
@@ -86,10 +118,19 @@ class Validation(BaseModel):
     url: HttpUrl
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # <-- your frontend origin
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/{shortUrl}")
 def fetchUrl(shortUrl:str):
     longUrl = getLongUrl(shortUrl)
+    if not longUrl:
+        return {"error": "Invalid short link"}
     return RedirectResponse(url=longUrl[0])
 
 
@@ -107,4 +148,4 @@ def url_shortner(longUrl:str = Form("")):
     return {"text":res}
 
 if __name__ == "__main__":
-    uvicorn.run("new_main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
