@@ -1,5 +1,5 @@
 from fastapi.responses import JSONResponse, RedirectResponse
-from pydantic import BaseModel, HttpUrl, PrivateAttr
+# from pydantic import BaseModel, HttpUrl, PrivateAttr
 from fastapi.middleware.cors import CORSMiddleware
 
 from fastapi import FastAPI, Form
@@ -108,8 +108,8 @@ def Shortener(longUrl):
     url = BASEURL + id
     return url
 
-class Validation(BaseModel):
-    url: HttpUrl
+# class Validation(BaseModel):
+#     url: HttpUrl
 
 app = FastAPI()
 app.add_middleware(
@@ -130,8 +130,8 @@ def fetchUrl(shortUrl:str):
 
 @app.post("/")
 def url_shortner(longUrl:str = Form("")):
-    valid_url = Validation(url = longUrl)
-    valid_url = str(valid_url.url)
+    # valid_url = Validation(url = longUrl)
+    # valid_url = str(valid_url.url)
     res = Shortener(longUrl)
     
     if isinstance(res,str):
