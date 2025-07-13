@@ -5,7 +5,7 @@ idna==3.7
 mypy==1.10.0
 mypy-extensions==1.0.0
 pydantic==2.7.1
-pydantic_core==2.18.2
+# pydantic_core==2.18.2
 # pypiwin32==223
 pyshorteners==1.0.1
 # pywin32==3.13

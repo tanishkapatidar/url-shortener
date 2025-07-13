@@ -18,12 +18,6 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT")
 
-
-
-
-
-
-
 if BASEURL is None:
     raise ValueError("BASEURL is not set in the .env file")
 

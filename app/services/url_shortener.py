@@ -1,7 +1,6 @@
 from configparser import ParsingError
 from typing import Optional, Union
 
-import pyshorteners
 from pydantic import BaseModel, PrivateAttr, ValidationError
 
 
