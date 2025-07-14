@@ -1,5 +1,4 @@
 from fastapi.responses import JSONResponse, RedirectResponse
-# from pydantic import BaseModel, HttpUrl, PrivateAttr
 from fastapi.middleware.cors import CORSMiddleware
 
 from fastapi import FastAPI, Form
